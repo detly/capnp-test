@@ -5,6 +5,17 @@
 #include <test.capnp.h>
 #include <valgrind/memcheck.h>
 
+static void print_vbits(char * prefix, char * vbits, size_t length)
+{
+    printf("%s: ", prefix);
+    for (size_t idx = 0; idx < length; idx++)
+    {
+        const int vbits_as_int = (int) vbits[idx] & 0xFF;
+        printf("%02x", vbits_as_int);
+    }
+    printf("\n");
+}
+
 static ssize_t encode_message(uint8_t ** buf)
 {
     struct Thing thing_enc = {
@@ -47,7 +58,21 @@ static struct Thing decode_message(uint8_t * buf, ssize_t buf_size)
     p_thing_dec.p = capn_getp(capn_root(&capn_dec), 0, 1);
 
     struct Thing thing_dec;
+
+    // Valgrind checks.
+    char * vbits = malloc(sizeof thing_dec);
+    VALGRIND_MAKE_MEM_UNDEFINED(&thing_dec, sizeof thing_dec);
+    const int vresult_before = VALGRIND_GET_VBITS(&thing_dec, vbits, sizeof thing_dec);
+    assert(vresult_before == 1);
+
+    print_vbits("1", vbits, sizeof thing_dec);
+
     read_Thing(&thing_dec, p_thing_dec);
+    const int vresult_after = VALGRIND_GET_VBITS(&thing_dec, vbits, sizeof thing_dec);
+    assert(vresult_after == 1);
+
+    print_vbits("2", vbits, sizeof thing_dec);
+
     capn_free(&capn_dec);
 
     return thing_dec;
