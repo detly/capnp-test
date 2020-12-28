@@ -36,8 +36,7 @@ static void print_vbits(char * prefix, char * vbits, size_t length)
     printf("%s: ", prefix);
     for (size_t idx = 0; idx < length; idx++)
     {
-        const int vbits_as_int = (int) vbits[idx] & 0xFF;
-        printf("%02x", vbits_as_int);
+        printf("%02hhx", vbits[idx]);
     }
     printf("\n");
 }
