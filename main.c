@@ -5,6 +5,32 @@
 #include <test.capnp.h>
 #include <valgrind/memcheck.h>
 
+static int capn_size(struct capn *c)
+{
+    size_t headersz, datasz = 0;
+    struct capn_ptr root;
+    struct capn_segment *seg;
+    uint32_t i;
+
+    if (c->segnum == 0)
+        return -1;
+
+    root = capn_root(c);
+    seg = root.seg;
+
+    headersz = 8 * ((2 + c->segnum) / 2);
+
+    for (i = 0; i < c->segnum; i++, seg = seg->next) {
+        if (0 == seg)
+            return -1;
+        datasz += seg->len;
+    }
+    if (0 != seg)
+        return -1;
+
+    return (int) headersz+datasz;
+}
+
 static void print_vbits(char * prefix, char * vbits, size_t length)
 {
     printf("%s: ", prefix);
@@ -19,11 +45,8 @@ static void print_vbits(char * prefix, char * vbits, size_t length)
 static ssize_t encode_message(uint8_t ** buf)
 {
     struct Thing thing_enc = {
-        .first = 1,
-        .second = EnumOne_oneB,
-        .third = 3,
-        .fourth = 4,
-        .fifth = EnumTwo_twoB,
+        .which = Thing_first,
+        .first = EnumOne_oneA,
     };
 
     struct capn capn_enc;
@@ -63,15 +86,22 @@ static struct Thing decode_message(uint8_t * buf, ssize_t buf_size)
     char * vbits = malloc(sizeof thing_dec);
     VALGRIND_MAKE_MEM_UNDEFINED(&thing_dec, sizeof thing_dec);
     const int vresult_before = VALGRIND_GET_VBITS(&thing_dec, vbits, sizeof thing_dec);
-    assert(vresult_before == 1);
+    assert(vresult_before <= 1);
 
-    print_vbits("1", vbits, sizeof thing_dec);
+    if (vresult_before == 1)
+    {
+        print_vbits("Before", vbits, sizeof thing_dec);
+    }
+
 
     read_Thing(&thing_dec, p_thing_dec);
     const int vresult_after = VALGRIND_GET_VBITS(&thing_dec, vbits, sizeof thing_dec);
-    assert(vresult_after == 1);
+    assert(vresult_after <= 1);
 
-    print_vbits("2", vbits, sizeof thing_dec);
+    if (vresult_after == 1)
+    {
+        print_vbits("After ", vbits, sizeof thing_dec);
+    }
 
     capn_free(&capn_dec);
 
@@ -86,9 +116,6 @@ int main(void)
 
     free(buf);
 
-    assert(thing_dec.first == 1);
-    assert(thing_dec.second == EnumOne_oneB);
-    assert(thing_dec.third == 3);
-    assert(thing_dec.fourth == 4);
-    assert(thing_dec.fifth == EnumTwo_twoB);
+    assert(thing_dec.which == Thing_first);
+    assert(thing_dec.first == EnumOne_oneA);
 }

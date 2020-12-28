@@ -1,21 +1,20 @@
 @0xa03ece5b64831776;
 
 struct Thing {
-    first @0 :UInt16;
-    second @1 :EnumOne;
-    third @2 :UInt16;
-    fourth @3 :UInt16;
-    fifth @4 :EnumTwo;
+    union {
+        first  @0 :EnumOne;
+        second @1 :UnionTwo;
+        third  @2 :UInt16;
+    }
 }
 
 enum EnumOne {
     oneA @0;
-    oneB @1;
-    oneC @2;
 }
 
-enum EnumTwo {
-    twoA @0;
-    twoB @1;
-    twoC @2;
+struct UnionTwo {
+    union {
+        twoA @0 :UInt16;
+        twoB @1 :UInt16;
+    }
 }
